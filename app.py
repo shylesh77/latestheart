@@ -8,7 +8,7 @@ from flask import Flask, render_template,request
 from flask import Flask, render_template,request
 from flask_mysqldb import MySQL
 from email.message import EmailMessage
-# from bs4 import BeautifulSoup
+#from bs4 import BeautifulSoup
 import smtplib
 import ard
 import datetime
@@ -57,18 +57,22 @@ def signup():
             id=i[0]
         cur.close();
         return render_template('oldindex.html')
+@app.route('/main',methods=['POST'])
+def main():
+    return render_template('home.html')
 @app.route('/Home',methods=['POST'])
 def home():
     global id
     if request.method=='POST':
-        Id=int(request.form['Id'])
+        name=request.form['Name']
         password=request.form['Password']
         cur=mysql.connection.cursor()
-        cur.execute("SELECT * FROM user where USER_ID=%s",[Id])
+        cur.execute("SELECT * FROM user where USER_NAME=%s",[name])
         result=cur.fetchall()
         for i in result:
             if i[2]==password:
-                id=Id
+                cur.execute("SELECT USER_ID FROM user WHERE USER_NAME=%s",[name])
+                id=cur.fetchall()
                 return render_template('home.html')
             else:
                 return render_template('index.html')
@@ -103,31 +107,21 @@ def confirm():
 def link():
     if request.method=="GET":
         return render_template('temp1.html')
-# @app.route('/print',methods=['GET'])
-# # def printresult():
+@app.route('/print',methods=['GET'])
+# def printresult():
 #     if request.method=="GET":
-#         html = open("D:\\heartdemo\\heart-main\\templates\\history.html").read()
-#         soup = BeautifulSoup(html)
-#         data = []
-#         list_header=[]
-#         header = soup.find_all("table")[0].find("tr")
-#         for items in header:
-#             try:
-#                 list_header.append(items.get_text())
-#             except:
-#                 continue
-#         HTML_data = soup.find_all("table")[0].find_all("tr")[1:]
-#         for element in HTML_data:
-#             sub_data = []
-#             for sub_element in element:
-#                 try:
-#                     sub_data.append(sub_element.get_text())
-#                 except:
-#                     continue
-#             data.append(sub_data)
-#         dataFrame = pd.DataFrame(data = data, columns = list_header)
-#         dataFrame.to_csv('Geeks1.csv')
-#     # return render_template('home.html')
+#         cur=mysql.connection.cursor()
+#         cur.execute("SELECT * FROM user_result where USER_ID=%s",[id])
+#         result=cur.fetchall()
+#         fp = open('D:\\heartdemo\\heart-main\\Geeks1.csv', 'w')
+#         myFile = csv.writer(fp)
+#         pd.set_option('display.width', 1000)
+#         myFile.writerows(result)  
+#         fp.close()
+#         df = pd.read_csv('Geeks1.csv')
+#         df.to_csv("Geeks1.csv",header=['USER_ID','HEART_RATE','CIGS PER DAY','SYSBP','DIABP','CHOLOSTROL','BMI','RISK FACTOR','DATE'],index=False)
+#         return render_template('home.html')
+
 
 @app.route('/heartRate')
 def heartRate():
@@ -141,6 +135,7 @@ def history():
     cur=mysql.connection.cursor()
     cur.execute("select * from user_result where USER_ID=%s",[id])
     result=cur.fetchall()
+    print(type(result))
     return render_template('history.html',result=result)
 @app.route('/predic')
 def predic():
@@ -183,7 +178,7 @@ def predic():
     print("Accuracy",100*sklearn.metrics.accuracy_score(y_test,y_pred))
     bmi=float(BMI)
     x=np.array([age,cigs,cholo,sys,dia,B,pulseRate,glucose]).reshape(1,-1)
-    prediction=logreg.predict(x)
+    prediction=logreg.predict(x)     
     server=smtplib.SMTP_SSL('smtp.gmail.com',465)
     server.login("shreeshyleshronaldo@gmail.com","reyilcphxxjlvdbq")
     datetime_object = datetime.datetime.now()
@@ -192,8 +187,10 @@ def predic():
     cur.execute("INSERT into user_result values(%s,%s,%s,%s,%s,%s,%s,%s,%s)",(id,pulseRate,cigs,sys,dia,cholo,B,prediction[0],datetime_object))
     cur.connection.commit()
     cur.close()
+    print(prediction)
     if prediction==0:
-        msg.set_content("ʏᴏᴜ ʜᴀᴠᴇ ɴᴏ ʀɪꜱᴋ ᴏꜰ ɢᴇᴛᴛɪɴɢ ʜᴇᴀʀᴛ ᴅɪꜱᴇᴀꜱᴇ.ꜰᴏʀ ꜱᴀꜰᴇʀ ꜱɪᴅᴇ,ᴄᴏɴꜱᴜʟᴛ ᴀ ᴅᴏᴄᴛᴏʀ")
+        m="ʏᴏᴜ ʜᴀᴠᴇ no ʀɪꜱᴋ ᴏꜰ ɢᴇᴛᴛɪɴɢ ʜᴇᴀʀᴛ ᴅɪꜱᴇᴀꜱᴇ. ᴋɪɴᴅʟʏ ᴄᴏɴꜱᴜʟᴛ ᴀ ᴅᴏᴄᴛᴏʀ"
+        msg.set_content(m)
         cur=mysql.connection.cursor()
         cur.execute("SELECT * FROM user_result where USER_ID=%s",[id])
         result=cur.fetchall()
@@ -208,7 +205,8 @@ def predic():
         return render_template("negative.html")
         
     else:
-        msg.set_content("ʏᴏᴜ ʜᴀᴠᴇ ʀɪꜱᴋ ᴏꜰ ɢᴇᴛᴛɪɴɢ ʜᴇᴀʀᴛ ᴅɪꜱᴇᴀꜱᴇ. ᴋɪɴᴅʟʏ ᴄᴏɴꜱᴜʟᴛ ᴀ ᴅᴏᴄᴛᴏʀ")
+        m="ʏᴏᴜ ʜᴀᴠᴇ ʀɪꜱᴋ ᴏꜰ ɢᴇᴛᴛɪɴɢ ʜᴇᴀʀᴛ ᴅɪꜱᴇᴀꜱᴇ. ᴋɪɴᴅʟʏ ᴄᴏɴꜱᴜʟᴛ ᴀ ᴅᴏᴄᴛᴏʀ"
+        msg.set_content(m)
         cur=mysql.connection.cursor()
         cur.execute("SELECT * FROM user_result where USER_ID=%s",[id])
         result=cur.fetchall()
